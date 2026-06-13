@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block titulo %}Ventas{% endblock %}
+{% block contenido %}
+
+<h1 class="titulo-seccion">Ventas</h1>
+<p class="nota">Perfil Administrador — todas las ventas registradas por los
+   procedimientos P1 (entradas) y T1 (abonos), y el recaudo desglosado
+   (vista <strong>v_informe_financiero</strong>, Fase 3).</p>
+
+<div class="tarjeta">
+  <h2>Informe financiero · por tipo de venta y tarifa</h2>
+  <table>
+    <tr><th>Tipo de venta</th><th>Tarifa</th><th>Unidades</th><th>Total recaudado</th></tr>
+    {% for f in finanzas %}
+    <tr>
+      <td>{{ f.tipo_venta }}</td>
+      <td>{{ f.tarifa }}</td>
+      <td>{{ f.unidades_vendidas }}</td>
+      <td>Bs {{ '{:,.2f}'.format(f.total_recaudado) }}</td>
+    </tr>
+    {% endfor %}
+  </table>
+</div>
+
+<div class="tarjeta">
+  <h2>Listado de ventas ({{ ventas|length }})</h2>
+  <table>
+    <tr><th>#</th><th>Fecha</th><th>Asistente</th><th>Tipo</th><th>Método</th><th>Estado pago</th><th>Total</th></tr>
+    {% for v in ventas %}
+    <tr>
+      <td>{{ v.venta_id }}</td>
+      <td>{{ v.fecha_venta.strftime('%d/%m %H:%M') }}</td>
+      <td>{{ v.asistente }}</td>
+      <td>{{ v.tipo_venta }}</td>
+      <td>{{ v.metodo_pago }}</td>
+      <td>{{ v.estado_pago }}</td>
+      <td>Bs {{ '{:,.2f}'.format(v.total) }}</td>
+    </tr>
+    {% endfor %}
+  </table>
+</div>
+
+{% endblock %}

@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+{% block titulo %}Abonos{% endblock %}
+{% block contenido %}
+
+<h1 class="titulo-seccion">Abonos del festival</h1>
+<p class="nota">Transacción crítica <strong>T1</strong> — al confirmar se invoca
+   <strong>sp_vender_abono</strong>: pago, códigos de acceso y factura se registran
+   en una sola transacción atómica. Si la pasarela rechaza el pago, se aplica
+   <strong>ROLLBACK</strong> de toda la operación.</p>
+
+<div class="grid-cartelera" style="grid-template-columns:repeat(auto-fill,minmax(280px,1fr));">
+  {% for t in tipos %}
+  <article class="card-peli">
+    <div class="poster g{{ t.tipo_abono_id % 6 + 1 }}" style="aspect-ratio:16/9;">
+      <span class="dur">{{ t.num_accesos }} accesos</span>
+      <div class="poster-centro">
+        <div class="poster-titulo">{{ t.nombre }}</div>
+        <div class="poster-sub">FestCine 2026</div>
+      </div>
+    </div>
+    <div class="card-info">
+      <div class="card-titulo">
+        <h3>Bs {{ '{:,.2f}'.format(t.precio_base) }}</h3>
+        <span class="pill">{{ t.num_accesos }} funciones</span>
+      </div>
+      <div class="card-formatos" style="text-transform:none;">{{ t.descripcion }}</div>
+    </div>
+    <button class="btn-comprar" data-id="{{ t.tipo_abono_id }}" data-nombre="{{ t.nombre }}">Comprar abono</button>
+  </article>
+  {% endfor %}
+</div>
+
+<!-- ============ MODAL DE COMPRA DE ABONO ============ -->
+<div class="overlay" id="overlay">
+  <div class="modal">
+    <button class="cerrar" id="btn-cerrar" type="button">✕</button>
+    <h2 id="modal-titulo">Abono</h2>
+    <p class="sub">El servidor emitirá el abono, sus códigos de acceso y la factura.</p>
+
+    <form method="post" action="{{ url_for('comprar_abono') }}">
+      <input type="hidden" id="tipo_abono_id" name="tipo_abono_id" value="">
+
+      {% if session.get('rol') == 'admin' %}
+      <label for="asistente">Asistente (venta en taquilla)</label>
+      <select id="asistente" name="asistente_id" required>
+        {% for a in asistentes %}
+        <option value="{{ a.asistente_id }}">{{ a.nombre_completo }} · {{ a.acreditacion }}</option>
+        {% endfor %}
+      </select>
+      {% else %}
+      <p class="sub" style="margin-top:.8rem;">Comprando como <strong style="color:#fff;">{{ session.nombre }}</strong></p>
+      {% endif %}
+
+      <label for="tarifa">Tarifa</label>
+      <select id="tarifa" name="tarifa_id" required>
+        {% for t in tarifas %}
+        <option value="{{ t.tarifa_id }}">{{ t.nombre }} ({{ t.descuento_pct|int }}% dto.)</option>
+        {% endfor %}
+      </select>
+
+      <div class="check">
+        <input type="checkbox" id="simular_fallo" name="simular_fallo" value="1">
+        <label for="simular_fallo">Simular fallo de la pasarela de pago (demostración del ROLLBACK)</label>
+      </div>
+
+      <button type="submit">Pagar abono</button>
+    </form>
+  </div>
+</div>
+
+<script>
+  const LOGUEADO = {{ 'true' if session.get('rol') else 'false' }};
+  const overlay = document.getElementById('overlay');
+
+  document.querySelectorAll('.btn-comprar').forEach(btn =>
+    btn.addEventListener('click', () => {
+      if (!LOGUEADO) {
+        window.location.href = "{{ url_for('login', next=url_for('abonos')) }}";
+        return;
+      }
+      document.getElementById('tipo_abono_id').value = btn.dataset.id;
+      document.getElementById('modal-titulo').textContent = btn.dataset.nombre;
+      overlay.classList.add('abierto');
+    }));
+
+  document.getElementById('btn-cerrar').addEventListener('click', () => overlay.classList.remove('abierto'));
+  overlay.addEventListener('click', e => { if (e.target === overlay) overlay.classList.remove('abierto'); });
+</script>
+{% endblock %}

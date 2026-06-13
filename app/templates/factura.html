@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block titulo %}Factura {{ f.numero_factura }}{% endblock %}
+{% block contenido %}
+<style>.compra-rapida { display:none; }</style>
+
+<a class="volver" href="{{ url_for('taquilla') }}">‹ Volver a la cartelera</a>
+
+<div class="factura-caja">
+  <div class="factura-cabecera">
+    <div>
+      <div class="logo" style="padding:0; font-size:1.5rem;">FEST<span>CINE</span> 2026</div>
+      <div class="nota" style="margin:0;">Festival Internacional de Cine Independiente · Medellín</div>
+    </div>
+    <div style="text-align:right;">
+      <div class="factura-numero">Factura {{ f.numero_factura }}</div>
+      <div class="nota" style="margin:0;">{{ f.fecha_emision.strftime('%d/%m/%Y %H:%M') }}</div>
+    </div>
+  </div>
+
+  <div class="factura-cuerpo">
+    {% if f.poster %}
+    <img class="factura-poster" src="{{ url_for('static', filename='posters/' ~ f.poster) }}"
+         alt="Póster de {{ f.concepto }}">
+    {% endif %}
+    <div class="factura-detalle">
+      <h2 style="margin:0 0 .6rem; text-transform:uppercase;">{{ f.concepto }}</h2>
+      <table class="factura-tabla">
+        <tr><td>Cliente</td><td>{{ f.asistente }} · {{ f.email }}</td></tr>
+        <tr><td>Tipo de venta</td><td>{{ f.tipo_venta }}</td></tr>
+        {% if f.funcion %}
+        <tr><td>Función</td><td>{{ f.funcion.strftime('%d/%m/%Y · %H:%M') }}</td></tr>
+        <tr><td>Sala</td><td>{{ f.sala }} · {{ f.sede }}</td></tr>
+        {% if f.duracion_min %}
+        <tr><td>Duración</td><td>{{ f.duracion_min|duracion }} · {{ f.clasificacion }}</td></tr>
+        {% endif %}
+        {% endif %}
+        <tr><td>Código</td><td><span class="pill">{{ f.codigo }}</span></td></tr>
+        <tr><td>Tarifa</td><td>{{ f.tarifa }}</td></tr>
+        <tr><td>Método de pago</td><td>{{ f.metodo_pago }}</td></tr>
+      </table>
+
+      <div class="factura-totales">
+        <div><span>Subtotal</span><span>Bs {{ '{:,.2f}'.format(f.subtotal) }}</span></div>
+        <div><span>IVA (19%)</span><span>Bs {{ '{:,.2f}'.format(f.impuestos) }}</span></div>
+        <div class="total"><span>TOTAL</span><span>Bs {{ '{:,.2f}'.format(f.total) }}</span></div>
+      </div>
+
+      <div style="display:flex; gap:1rem; flex-wrap:wrap; margin-top:1.4rem;">
+        <a class="boton" style="text-decoration:none; display:inline-block;"
+           href="{{ url_for('factura_pdf', venta_id=f.venta_id) }}">⬇ Descargar PDF</a>
+        <a class="boton" style="text-decoration:none; display:inline-block; background:#2a2a33;"
+           href="{{ url_for('taquilla') }}">Seguir comprando</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}

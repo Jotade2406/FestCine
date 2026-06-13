@@ -1,0 +1,111 @@
+{% extends "base.html" %}
+{% block titulo %}Iniciar sesión{% endblock %}
+{% block contenido %}
+<style>.compra-rapida { display:none; }</style>
+
+<div class="login-caja">
+  <h1 class="titulo-seccion" style="font-size:1.3rem;" id="login-titulo">Bienvenido a FestCine</h1>
+
+  <div class="tabs-fecha" style="width:100%; margin:1rem 0;" id="tabs-cliente">
+    <button type="button" class="tab-fecha activo" id="tab-login" style="flex:1;">
+      <span class="tf-dia">Iniciar sesión</span>
+      <span class="tf-num">Ya tengo cuenta</span>
+    </button>
+    <button type="button" class="tab-fecha" id="tab-registro" style="flex:1;">
+      <span class="tf-dia">Registrarse</span>
+      <span class="tf-num">Crear cuenta nueva</span>
+    </button>
+  </div>
+
+  <!-- ============ INICIO DE SESIÓN (correo o usuario) ============ -->
+  <form method="post" id="form-login">
+    <input type="hidden" name="accion" value="login">
+    <input type="hidden" name="next" value="{{ siguiente }}">
+    <label for="login">Correo o nombre de usuario</label>
+    <input type="text" id="login" name="login" required placeholder="laura.gomez@mail.com o laugomez">
+    <label for="clave-login">Contraseña</label>
+    <input type="password" id="clave-login" name="clave" required placeholder="••••••••">
+    <p class="nota" style="margin-top:.6rem;">Cuentas de prueba precargadas: correo
+       <em>laura.gomez@mail.com</em> (o usuario <em>laugomez</em>), contraseña
+       <em>12345678</em>.</p>
+    <button type="submit">Entrar</button>
+  </form>
+
+  <!-- ============ REGISTRO DE CUENTA ============ -->
+  <form method="post" id="form-registro" style="display:none;">
+    <input type="hidden" name="accion" value="registro">
+    <input type="hidden" name="next" value="{{ siguiente }}">
+    <div class="fila">
+      <div>
+        <label for="nombre">Nombre(s)</label>
+        <input type="text" id="nombre" name="nombre" required placeholder="Laura">
+      </div>
+      <div>
+        <label for="apellidos">Apellidos</label>
+        <input type="text" id="apellidos" name="apellidos" required placeholder="Gómez">
+      </div>
+    </div>
+    <label for="email">Correo</label>
+    <input type="email" id="email" name="email" required placeholder="laura.gomez@mail.com">
+    <label for="usuario">Nombre de usuario</label>
+    <input type="text" id="usuario" name="usuario" required minlength="3" placeholder="laugomez">
+    <label for="clave-registro">Contraseña (mínimo 6 caracteres)</label>
+    <input type="password" id="clave-registro" name="clave" required minlength="6" placeholder="••••••••">
+    <label for="telefono">Teléfono (opcional)</label>
+    <input type="text" id="telefono" name="telefono" placeholder="+57 300 000 0000">
+    <button type="submit">Crear cuenta</button>
+  </form>
+
+  <!-- ============ ACCESO ADMINISTRADOR (discreto) ============ -->
+  <form method="post" id="form-admin" style="display:none;">
+    <input type="hidden" name="accion" value="admin">
+    <input type="hidden" name="next" value="{{ siguiente }}">
+    <label for="usuario-admin">Usuario administrador</label>
+    <input type="text" id="usuario-admin" name="usuario" required placeholder="admin">
+    <label for="clave-admin">Clave</label>
+    <input type="password" id="clave-admin" name="clave" required placeholder="••••••••">
+    <button type="submit">Entrar al panel</button>
+  </form>
+
+  <p class="nota" style="margin-top:1.4rem; text-align:center;">
+    <a href="#" id="alternar-admin" style="color:var(--texto2); text-decoration:none;">
+      ¿Coordinas el festival? <u>Acceso administración</u>
+    </a>
+  </p>
+</div>
+
+<script>
+  const tabLogin    = document.getElementById('tab-login');
+  const tabRegistro = document.getElementById('tab-registro');
+  const tabs        = document.getElementById('tabs-cliente');
+  const fLogin      = document.getElementById('form-login');
+  const fRegistro   = document.getElementById('form-registro');
+  const fAdmin      = document.getElementById('form-admin');
+  const titulo      = document.getElementById('login-titulo');
+  const alternar    = document.getElementById('alternar-admin');
+  let modoAdmin = false;
+
+  function activar(login) {
+    tabLogin.classList.toggle('activo', login);
+    tabRegistro.classList.toggle('activo', !login);
+    fLogin.style.display    = login ? 'block' : 'none';
+    fRegistro.style.display = login ? 'none'  : 'block';
+  }
+  tabLogin.addEventListener('click', () => activar(true));
+  tabRegistro.addEventListener('click', () => activar(false));
+
+  alternar.addEventListener('click', (e) => {
+    e.preventDefault();
+    modoAdmin = !modoAdmin;
+    tabs.style.display      = modoAdmin ? 'none' : 'flex';
+    fLogin.style.display    = modoAdmin ? 'none' : 'block';
+    fRegistro.style.display = 'none';
+    fAdmin.style.display    = modoAdmin ? 'block' : 'none';
+    titulo.textContent      = modoAdmin ? 'Panel de administración' : 'Bienvenido a FestCine';
+    alternar.innerHTML      = modoAdmin
+        ? '← <u>Volver al acceso de clientes</u>'
+        : '¿Coordinas el festival? <u>Acceso administración</u>';
+    if (!modoAdmin) activar(true);
+  });
+</script>
+{% endblock %}

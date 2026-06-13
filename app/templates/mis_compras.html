@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block titulo %}Mis compras{% endblock %}
+{% block contenido %}
+
+<h1 class="titulo-seccion">Mis compras</h1>
+<p class="nota">Entradas y abonos a nombre de <strong>{{ session.nombre }}</strong>.</p>
+
+<div class="tarjeta">
+  {% if compras %}
+  <table>
+    <tr><th>Fecha</th><th>Tipo</th><th>Concepto</th><th>Función</th><th>Código</th><th>Tarifa</th><th>Pagado</th><th>Factura</th></tr>
+    {% for c in compras %}
+    <tr>
+      <td>{{ c.fecha_venta.strftime('%d/%m %H:%M') }}</td>
+      <td>{{ c.tipo }}</td>
+      <td>{{ c.concepto }}</td>
+      <td>{{ c.funcion.strftime('%d/%m %H:%M') if c.funcion else '—' }}</td>
+      <td><span class="pill">{{ c.codigo }}</span></td>
+      <td>{{ c.tarifa }}</td>
+      <td>Bs {{ '{:,.2f}'.format(c.precio_pagado) }}</td>
+      <td><a href="{{ url_for('factura_ver', venta_id=c.venta_id) }}" style="color:var(--rojo);">Ver</a></td>
+    </tr>
+    {% endfor %}
+  </table>
+  {% else %}
+  <p class="nota">Aún no tienes compras registradas. ¡Explora la
+     <a href="{{ url_for('taquilla') }}" style="color:var(--rojo);">cartelera</a>!</p>
+  {% endif %}
+</div>
+
+{% endblock %}

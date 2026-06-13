@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+{% block titulo %}Agenda{% endblock %}
+{% block contenido %}
+
+<h1 class="titulo-seccion">Panel de agenda</h1>
+<p class="nota">Módulo 2 · Perfil Administrador</p>
+
+<div class="tarjeta">
+  <h2>Programar nueva proyección</h2>
+  <p class="nota">Al presionar «Programar», la aplicación invoca
+     <strong>sp_programar_proyeccion</strong>, que inserta en la tabla de
+     proyecciones. El trigger <strong>TR1</strong> rechaza la inserción si la
+     sala está ocupada en ese rango (duración de la película + 30 min de
+     limpieza) y este panel muestra el bloqueo como un mensaje amigable.</p>
+
+  <form method="post" action="{{ url_for('programar_proyeccion') }}">
+    <div class="fila">
+      <div>
+        <label for="pelicula">Película (seleccionada/premiada)</label>
+        <select id="pelicula" name="pelicula_id" required>
+          {% for p in peliculas %}
+          <option value="{{ p.pelicula_id }}">{{ p.titulo }} · {{ p.duracion_min }} min</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div>
+        <label for="sala">Sala</label>
+        <select id="sala" name="sala_id" required>
+          {% for s in salas %}
+          <option value="{{ s.sala_id }}">{{ s.sala }} · {{ s.sede }} · {{ s.capacidad }} sillas</option>
+          {% endfor %}
+        </select>
+      </div>
+    </div>
+    <div class="fila">
+      <div>
+        <label for="fecha_hora">Fecha y hora</label>
+        <input type="datetime-local" id="fecha_hora" name="fecha_hora" required
+               min="2026-06-10T08:00" max="2026-06-20T23:59" value="2026-06-12T19:00">
+      </div>
+      <div>
+        <label for="precio">Precio base (Bs)</label>
+        <input type="number" id="precio" name="precio_base" min="0" step="5" value="30" required>
+      </div>
+    </div>
+    <div class="check">
+      <input type="checkbox" id="tiene_qa" name="tiene_qa" value="1">
+      <label for="tiene_qa" style="margin:0">Incluye sesión de preguntas y respuestas (Q&amp;A)</label>
+    </div>
+    <button type="submit">Programar</button>
+  </form>
+</div>
+
+<div class="tarjeta">
+  <h2>Ocupación de salas · proyecciones programadas</h2>
+  <p class="nota">«Sala libre» = fin de la función + 30 minutos de limpieza
+     (la misma regla que aplica el trigger TR1). «Vendidos» son entradas más
+     canjes de abono descontados del aforo.</p>
+  <table>
+    <tr><th>#</th><th>Película</th><th>Sala</th><th>Día</th><th>Inicio</th><th>Fin</th><th>Sala libre</th><th>Vendidos</th><th>Aforo disp.</th><th></th></tr>
+    {% for p in proyecciones %}
+    <tr>
+      <td>{{ p.proyeccion_id }}</td>
+      <td>{{ p.titulo }}</td>
+      <td>{{ p.sala }} · {{ p.sede }}</td>
+      <td>{{ p.fecha_hora.strftime('%d/%m') }}</td>
+      <td>{{ p.fecha_hora.strftime('%H:%M') }}</td>
+      <td>{{ p.fecha_hora_fin.strftime('%H:%M') }}</td>
+      <td>{{ p.fecha_hora_libre.strftime('%H:%M') }}</td>
+      <td>{{ p.asistentes }}</td>
+      <td>{{ p.aforo_disponible }} / {{ p.capacidad }}</td>
+      <td>{% if p.tiene_qa %}<span class="pill">Q&amp;A</span>{% endif %}</td>
+    </tr>
+    {% endfor %}
+  </table>
+</div>
+
+{% endblock %}

@@ -1,0 +1,144 @@
+{% extends "base.html" %}
+{% block titulo %}{{ pelicula.titulo }}{% endblock %}
+{% block contenido %}
+<style>.compra-rapida { display:none; }</style>
+
+{% set colores = {'TP':'verde', '7+':'azul', '12+':'azul', '16+':'naranja', '18+':'rojo'} %}
+
+<a class="volver" href="{{ url_for('taquilla') }}">‹ Volver a la cartelera</a>
+
+<div class="detalle">
+  <!-- ============ COLUMNA PÓSTER ============ -->
+  <div>
+    <div class="poster-det">
+      {% if pelicula.poster %}
+      <img src="{{ url_for('static', filename='posters/' ~ pelicula.poster) }}" alt="Póster de {{ pelicula.titulo }}">
+      {% endif %}
+      <span class="dur izq">{{ pelicula.duracion_min|duracion }}</span>
+      <span class="clasif {{ colores.get(pelicula.clasificacion, 'azul') }} clasif-flot">{{ pelicula.clasificacion }}</span>
+    </div>
+    {% if pelicula.estado == 'Premiada' %}
+    <div class="strip premiada" style="border-radius:0 0 10px 10px;">🏆 Premiada · Mejor Película 2026</div>
+    {% endif %}
+
+    <h2 class="subtitulo">Sinopsis</h2>
+    <p class="sinopsis">{{ pelicula.sinopsis }}</p>
+    <p class="meta-det">{{ pelicula.formato }} · {{ pelicula.generos }}<br>
+       {{ pelicula.pais_origen }} · {{ pelicula.anio_produccion }}</p>
+  </div>
+
+  <!-- ============ COLUMNA HORARIOS ============ -->
+  <div id="horarios">
+    <h1>{{ pelicula.titulo }}</h1>
+    <p class="meta-det">Selección oficial · FestCine {{ pelicula.edicion }}</p>
+
+    <h2 class="subtitulo">Horarios</h2>
+
+    {% if fechas %}
+    <div class="tabs-fecha">
+      {% for f in fechas %}
+      <button type="button" class="tab-fecha {{ 'activo' if loop.first }}" data-fecha="{{ f.clave }}">
+        <span class="tf-dia">{{ f.dia }}</span>
+        <span class="tf-num">{{ f.fecha }}</span>
+      </button>
+      {% endfor %}
+    </div>
+
+    <h3 class="subtitulo" style="font-size:.95rem;">Disponibilidad de asientos</h3>
+    <div class="leyenda">
+      <span><span class="punto alta"></span>Alta</span>
+      <span><span class="punto media"></span>Media</span>
+      <span><span class="punto baja"></span>Baja</span>
+      <span><span class="punto lleno"></span>Lleno</span>
+    </div>
+
+    {% for f in fechas %}
+    <div class="panel-fecha {{ 'visible' if loop.first }}" data-fecha="{{ f.clave }}">
+      {% for sede, items in agenda[f.clave]|groupby('sede') %}
+      <div class="sede-bloque">
+        <div class="sede-titulo">Horarios en <span class="sede-nombre">{{ sede }}</span></div>
+        <div class="sede-dir">Dirección: {{ items[0].direccion }}</div>
+        {% for sala, funciones in items|groupby('sala') %}
+        <div class="sala-linea">{{ pelicula.formato }} · {{ sala }}</div>
+        <div class="horas">
+          {% for fn in funciones %}
+          <button type="button" class="hora {{ fn.disp }}" {{ 'disabled' if fn.disp == 'lleno' }}
+                  data-id="{{ fn.proyeccion_id }}" data-info="{{ fn.info }}">
+            {{ fn.hora }}hs{% if fn.qa %} · Q&amp;A{% endif %}
+          </button>
+          {% endfor %}
+        </div>
+        {% endfor %}
+      </div>
+      {% endfor %}
+    </div>
+    {% endfor %}
+    {% else %}
+    <p class="nota">Esta película aún no tiene funciones programadas.</p>
+    {% endif %}
+  </div>
+</div>
+
+<div class="barra-comprar"><a href="#horarios">Comprar entradas</a></div>
+
+<!-- ============ MODAL DE COMPRA (invoca P1 en el servidor) ============ -->
+<div class="overlay" id="overlay">
+  <div class="modal">
+    <button class="cerrar" id="btn-cerrar" type="button">✕</button>
+    <h2>{{ pelicula.titulo }}</h2>
+    <p class="sub" id="modal-info">Función seleccionada</p>
+
+    <form method="post" action="{{ url_for('comprar_entrada') }}">
+      <input type="hidden" name="proyeccion_id" id="proyeccion_id" value="">
+      <input type="hidden" name="volver" value="{{ request.path }}">
+
+      {% if session.get('rol') == 'admin' %}
+      <label for="asistente">Asistente (venta en taquilla)</label>
+      <select id="asistente" name="asistente_id" required>
+        {% for a in asistentes %}
+        <option value="{{ a.asistente_id }}">{{ a.nombre_completo }} · {{ a.acreditacion }}</option>
+        {% endfor %}
+      </select>
+      {% else %}
+      <p class="sub" style="margin-top:.8rem;">Comprando como <strong style="color:#fff;">{{ session.nombre }}</strong></p>
+      {% endif %}
+
+      <label for="tarifa">Tipo de tarifa</label>
+      <select id="tarifa" name="tarifa_id" required>
+        {% for t in tarifas %}
+        <option value="{{ t.tarifa_id }}">{{ t.nombre }} ({{ t.descuento_pct|int }}% dto.)</option>
+        {% endfor %}
+      </select>
+
+      <button type="submit">Confirmar compra</button>
+    </form>
+  </div>
+</div>
+
+<script>
+  /* Pestañas de fecha */
+  const tabs    = document.querySelectorAll('.tab-fecha');
+  const paneles = document.querySelectorAll('.panel-fecha');
+  tabs.forEach(tab => tab.addEventListener('click', () => {
+    tabs.forEach(t => t.classList.toggle('activo', t === tab));
+    paneles.forEach(p => p.classList.toggle('visible', p.dataset.fecha === tab.dataset.fecha));
+  }));
+
+  /* Compra: clic en una hora abre el modal con la función preseleccionada.
+     Si no hay sesión iniciada, se redirige al login. */
+  const LOGUEADO = {{ 'true' if session.get('rol') else 'false' }};
+  const overlay = document.getElementById('overlay');
+  document.querySelectorAll('.hora:not([disabled])').forEach(btn =>
+    btn.addEventListener('click', () => {
+      if (!LOGUEADO) {
+        window.location.href = "{{ url_for('login', next=request.path) }}";
+        return;
+      }
+      document.getElementById('proyeccion_id').value = btn.dataset.id;
+      document.getElementById('modal-info').textContent = btn.dataset.info;
+      overlay.classList.add('abierto');
+    }));
+  document.getElementById('btn-cerrar').addEventListener('click', () => overlay.classList.remove('abierto'));
+  overlay.addEventListener('click', e => { if (e.target === overlay) overlay.classList.remove('abierto'); });
+</script>
+{% endblock %}

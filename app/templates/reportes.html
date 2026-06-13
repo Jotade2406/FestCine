@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block titulo %}Reportes{% endblock %}
+{% block contenido %}
+
+<h1 class="titulo-seccion">Reportes del festival</h1>
+<p class="nota">Fase 3 — los datos de cada reporte los genera el procedimiento
+   almacenado <strong>sp_generar_reporte('ranking' | 'acta' | 'financiero')</strong>.</p>
+
+<div class="tarjeta">
+  <h2>R1 · Ranking de películas — edición 2026 — sp_generar_reporte('ranking')</h2>
+  <table>
+    <tr><th>Película</th><th>Funciones</th><th>Asistentes reales</th><th>Capacidad total</th><th>% Ocupación</th></tr>
+    {% for r in ranking %}
+    <tr>
+      <td>{{ r.titulo }}</td>
+      <td>{{ r.proyecciones }}</td>
+      <td>{{ r.total_asistentes }}</td>
+      <td>{{ r.capacidad_total }}</td>
+      <td>{{ r.pct_ocupacion }} %</td>
+    </tr>
+    {% endfor %}
+  </table>
+</div>
+
+<div class="tarjeta">
+  <h2>R2 · Acta de premiación — sp_generar_reporte('acta')</h2>
+  <table>
+    <tr><th>Edición</th><th>Categoría</th><th>Película ganadora</th><th>País</th><th>Promedio jurado</th><th>Votos</th><th>Fecha</th></tr>
+    {% for a in acta %}
+    <tr>
+      <td>{{ a.edicion }}</td>
+      <td>{{ a.categoria }}</td>
+      <td>{{ a.pelicula_ganadora }}</td>
+      <td>{{ a.pais_origen }}</td>
+      <td>{{ a.promedio_jurado }}</td>
+      <td>{{ a.votos_emitidos }}</td>
+      <td>{{ a.fecha_otorgamiento }}</td>
+    </tr>
+    {% endfor %}
+  </table>
+</div>
+
+<div class="tarjeta">
+  <h2>R3 · Informe financiero — sp_generar_reporte('financiero')</h2>
+  <table>
+    <tr><th>Tipo de venta</th><th>Tarifa</th><th>Unidades</th><th>Total recaudado</th></tr>
+    {% for f in finanzas %}
+    <tr>
+      <td>{{ f.tipo_venta }}</td>
+      <td>{{ f.tarifa }}</td>
+      <td>{{ f.unidades_vendidas }}</td>
+      <td>Bs {{ '{:,.2f}'.format(f.total_recaudado) }}</td>
+    </tr>
+    {% endfor %}
+  </table>
+</div>
+
+{% endblock %}

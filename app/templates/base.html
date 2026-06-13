@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FestCine · {% block titulo %}{% endblock %}</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:#0a0a0c; --panel:#141419; --panel2:#1c1c23; --linea:#2a2a33;
+    --rojo:#c8102e; --rojo-osc:#7a0c1e; --oro:#d4a017;
+    --texto:#f4f4f6; --texto2:#a8a8b3;
+    color-scheme: dark;
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--texto);
+         font-family:'Inter','Segoe UI',system-ui,sans-serif; }
+  h1,h2,h3,.condensada, nav a, button, .strip, .btn-comprar
+       { font-family:'Oswald','Arial Narrow','Segoe UI',sans-serif; }
+
+  /* ============ HEADER ============ */
+  header { background:#000; border-bottom:1px solid var(--linea); padding:0 2rem;
+           display:flex; align-items:center; gap:2.5rem; flex-wrap:wrap; position:sticky; top:0; z-index:50; }
+  .logo { font-family:'Oswald',sans-serif; font-size:1.7rem; font-weight:700; letter-spacing:2px;
+          color:#fff; padding:.8rem 0; text-decoration:none; }
+  .logo span { color:var(--rojo); }
+  nav { display:flex; gap:1.8rem; }
+  nav a { color:#cfcfd6; text-decoration:none; text-transform:uppercase; font-weight:600;
+          letter-spacing:1.5px; font-size:.92rem; padding:1.2rem 0; border-bottom:3px solid transparent; }
+  nav a.activo, nav a:hover { color:#fff; border-bottom-color:var(--rojo); }
+  .header-der { margin-left:auto; color:var(--texto2); font-size:.85rem; letter-spacing:1px;
+                text-transform:uppercase; font-family:'Oswald',sans-serif;
+                display:flex; align-items:center; gap:1.2rem; }
+  .usuario-chip { color:#fff; }
+  .salir { color:var(--rojo); text-decoration:none; font-weight:600; letter-spacing:1.5px; }
+  .salir:hover { color:#fff; }
+  .ubicacion { display:none; }
+  @media (min-width:1100px) { .ubicacion { display:inline; } }
+
+  /* ============ LOGIN ============ */
+  .login-caja { max-width:480px; margin:3rem auto; background:var(--panel); border:1px solid var(--linea);
+                border-radius:12px; padding:2rem 2.2rem; }
+  .login-caja input[type=email], .login-caja input[type=text], .login-caja input[type=password] {
+      width:100%; padding:.6rem .7rem; border:1px solid var(--linea); border-radius:6px;
+      background:#0f0f13; color:var(--texto); font-size:.95rem; }
+  .login-caja .tab-fecha { flex:1; }
+
+  main { max-width:1240px; margin:1.8rem auto 5rem; padding:0 1.4rem; }
+  .titulo-seccion { text-transform:uppercase; letter-spacing:2px; font-size:1.5rem;
+                    border-left:5px solid var(--rojo); padding-left:.8rem; margin:0 0 .4rem; }
+  .nota { font-size:.86rem; color:var(--texto2); margin:.2rem 0 1.4rem; max-width:850px; }
+  .nota strong { color:var(--texto); }
+
+  /* ============ FLASH ============ */
+  .flash { padding:.85rem 1.2rem; border-radius:6px; margin-bottom:1.2rem; font-weight:500; font-size:.95rem; }
+  .flash.exito { background:#10271a; color:#7fe0a0; border:1px solid #1f5c38; }
+  .flash.error { background:#2c1013; color:#ff9aa4; border:1px solid #6e1f29; }
+
+  /* ============ HERO (carrusel de banners) ============ */
+  .hero { position:relative; border-radius:12px; overflow:hidden; margin-bottom:2.2rem;
+          aspect-ratio:2304/800; background:#000; border:1px solid var(--linea); }
+  .hero-slide { position:absolute; inset:0; background-size:cover; background-position:center;
+                opacity:0; transition:opacity .7s ease; cursor:pointer; }
+  .hero-slide.visible { opacity:1; z-index:1; }
+  .hero-slide::after { content:''; position:absolute; inset:0;
+                       background:linear-gradient(0deg, rgba(0,0,0,.55) 0%, transparent 30%); }
+  .hero-cta { position:absolute; left:2.2rem; bottom:1.6rem; z-index:2; background:var(--rojo);
+              color:#fff; padding:.6rem 1.4rem; border-radius:6px; font-family:'Oswald',sans-serif;
+              font-weight:600; letter-spacing:2px; text-transform:uppercase; font-size:.9rem;
+              box-shadow:0 4px 14px rgba(0,0,0,.55); }
+  .hero-slide:hover .hero-cta { background:var(--rojo-osc); }
+  .hero-flecha { position:absolute; top:50%; transform:translateY(-50%); z-index:3;
+                 background:rgba(20,20,25,.65); color:#fff; border:1px solid var(--linea);
+                 border-radius:8px; width:42px; height:42px; font-size:1.4rem; cursor:pointer; line-height:1; }
+  .hero-flecha:hover { background:var(--rojo); }
+  .hero-flecha.izq { left:1rem; } .hero-flecha.der { right:1rem; }
+  .hero-dots { position:absolute; bottom:-1.4rem; left:50%; transform:translateX(-50%);
+               display:flex; gap:.5rem; }
+  .hero-dot { width:42px; height:4px; border:none; border-radius:2px; background:#3a3a44;
+              cursor:pointer; padding:0; }
+  .hero-dot.activo { background:#e8e8ee; }
+  .hero-wrap { margin-bottom:3rem; position:relative; }
+
+  /* ============ CARTELERA (grid de tarjetas) ============ */
+  .grid-cartelera { display:grid; grid-template-columns:repeat(auto-fill,minmax(235px,1fr)); gap:1.4rem; }
+  .card-peli { background:var(--panel); border:1px solid var(--linea); border-radius:10px;
+               overflow:hidden; display:flex; flex-direction:column; transition:transform .15s, border-color .15s; }
+  .card-peli:hover { transform:translateY(-4px); border-color:#3d3d49; }
+
+  .poster { aspect-ratio:2/3; position:relative; display:flex; align-items:center; justify-content:center; padding:1rem; }
+  .poster:not(.con-img)::after { content:''; position:absolute; inset:0;
+                   background:radial-gradient(ellipse at 50% 25%, rgba(255,255,255,.16), transparent 55%); }
+  .poster img { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; }
+  .g1 { background:linear-gradient(165deg,#1d3a4f 0%,#0e1c2c 55%,#070d16 100%); }
+  .g2 { background:linear-gradient(165deg,#5a1025 0%,#2a0813 55%,#12040a 100%); }
+  .g3 { background:linear-gradient(165deg,#6b4e10 0%,#33250a 55%,#161005 100%); }
+  .g4 { background:linear-gradient(165deg,#143d2e 0%,#0a2018 55%,#04100b 100%); }
+  .g5 { background:linear-gradient(165deg,#3b1d5e 0%,#1d0e31 55%,#0c0517 100%); }
+  .g6 { background:linear-gradient(165deg,#4f1d1d 0%,#28100e 55%,#120605 100%); }
+  .dur { position:absolute; top:.6rem; right:.6rem; background:rgba(0,0,0,.65); color:#fff;
+         padding:.15rem .5rem; border-radius:4px; font-size:.8rem; font-weight:600; z-index:2;
+         font-family:'Oswald',sans-serif; letter-spacing:1px; }
+  .poster-centro { text-align:center; z-index:1; }
+  .poster-titulo { font-family:'Oswald',sans-serif; font-weight:700; font-size:1.5rem; line-height:1.15;
+                   text-transform:uppercase; letter-spacing:1px; text-shadow:0 2px 10px rgba(0,0,0,.7); }
+  .poster-sub { margin-top:.7rem; font-size:.68rem; letter-spacing:2.5px; text-transform:uppercase;
+                color:rgba(255,255,255,.75); }
+  .poster-laurel { position:absolute; bottom:.8rem; left:0; right:0; text-align:center;
+                   font-size:.65rem; letter-spacing:2px; color:rgba(255,255,255,.55); text-transform:uppercase; }
+
+  .card-info { padding:.8rem .9rem .6rem; }
+  .card-titulo { display:flex; justify-content:space-between; align-items:flex-start; gap:.5rem; }
+  .card-titulo h3 { margin:0; font-size:1.05rem; text-transform:uppercase; letter-spacing:.5px; line-height:1.2; }
+  .clasif { flex-shrink:0; font-size:.78rem; font-weight:700; padding:.18rem .5rem; border-radius:6px; color:#04250f; }
+  .clasif.verde   { background:#3fc380; }
+  .clasif.azul    { background:#4aa8e8; color:#062236; }
+  .clasif.naranja { background:#e8a44a; color:#2e1d04; }
+  .clasif.rojo    { background:#e84a5f; color:#310409; }
+  .card-formatos { margin-top:.45rem; color:var(--texto2); font-size:.82rem; letter-spacing:1px; text-transform:uppercase; }
+
+  .strip { text-align:center; padding:.42rem; font-size:.85rem; letter-spacing:2px;
+           text-transform:uppercase; font-weight:600; }
+  .strip.estreno  { background:#f3f3f1; color:#1c1c1c; }
+  .strip.premiada { background:linear-gradient(90deg,#7a5c0e,#d4a017,#7a5c0e); color:#1a1303; }
+
+  .btn-comprar { display:block; text-align:center; text-decoration:none; background:var(--rojo);
+                 color:#fff; border:none; padding:.7rem; font-size:.95rem;
+                 letter-spacing:2px; text-transform:uppercase; font-weight:600; cursor:pointer; }
+  .btn-comprar:hover { background:var(--rojo-osc); }
+  .card-enlace { color:inherit; text-decoration:none; display:block; flex:1; }
+
+  /* ============ MODAL ============ */
+  .overlay { position:fixed; inset:0; background:rgba(0,0,0,.75); display:none;
+             align-items:center; justify-content:center; z-index:100; padding:1rem; }
+  .overlay.abierto { display:flex; }
+  .modal { background:var(--panel2); border:1px solid var(--linea); border-radius:12px;
+           width:min(520px,100%); padding:1.6rem 1.8rem; position:relative; }
+  .modal h2 { margin:0 0 .2rem; text-transform:uppercase; letter-spacing:1px; color:#fff; }
+  .modal .sub { color:var(--texto2); font-size:.85rem; margin-bottom:1rem; }
+  .cerrar { position:absolute; top:.7rem; right:1rem; background:none; border:none; color:var(--texto2);
+            font-size:1.5rem; cursor:pointer; padding:0; }
+  .cerrar:hover { color:#fff; }
+
+  /* ============ FORMULARIOS ============ */
+  label { display:block; margin:.8rem 0 .3rem; font-size:.82rem; font-weight:600;
+          letter-spacing:1.2px; text-transform:uppercase; color:var(--texto2); }
+  select, input[type=number], input[type=datetime-local] {
+      width:100%; padding:.55rem .65rem; border:1px solid var(--linea); border-radius:6px;
+      background:#0f0f13; color:var(--texto); font-size:.95rem; font-family:'Inter',sans-serif; }
+  select:focus, input:focus { outline:none; border-color:var(--rojo); }
+  .fila { display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:1rem; }
+  .check { display:flex; align-items:center; gap:.55rem; margin-top:1rem; font-size:.9rem; color:var(--texto2); }
+  .check input { width:auto; accent-color:var(--rojo); }
+  .check label { margin:0; text-transform:none; letter-spacing:0; color:var(--texto2); }
+  button[type=submit], .boton { margin-top:1.2rem; background:var(--rojo); color:#fff; border:none;
+      padding:.7rem 2rem; border-radius:6px; font-size:1rem; letter-spacing:2px; text-transform:uppercase;
+      font-weight:600; cursor:pointer; }
+  button[type=submit]:hover, .boton:hover { background:var(--rojo-osc); }
+
+  /* ============ PANELES Y TABLAS (agenda / reportes) ============ */
+  .tarjeta { background:var(--panel); border:1px solid var(--linea); border-radius:10px;
+             padding:1.3rem 1.5rem; margin-bottom:1.5rem; }
+  .tarjeta h2 { margin-top:0; font-size:1.1rem; text-transform:uppercase; letter-spacing:1.5px;
+                color:#fff; border-left:4px solid var(--rojo); padding-left:.7rem; }
+  table { width:100%; border-collapse:collapse; font-size:.9rem; }
+  th { text-align:left; background:#0d0d11; color:var(--texto2); padding:.6rem .75rem;
+       text-transform:uppercase; font-size:.74rem; letter-spacing:1.5px; }
+  td { padding:.55rem .75rem; border-top:1px solid var(--linea); }
+  tr:hover td { background:#1a1a21; }
+  .pill { display:inline-block; padding:.1rem .55rem; border-radius:999px; font-size:.75rem;
+          background:#2a2a33; color:var(--oro); letter-spacing:1px; }
+
+  /* ============ DETALLE DE PELÍCULA ============ */
+  .volver { display:inline-block; color:var(--texto2); text-decoration:none; margin-bottom:1.2rem;
+            font-family:'Oswald',sans-serif; letter-spacing:1.5px; text-transform:uppercase; font-size:.85rem; }
+  .volver:hover { color:#fff; }
+  .detalle { display:grid; grid-template-columns:minmax(260px,340px) 1fr; gap:2.4rem; align-items:start; }
+  @media (max-width:760px) { .detalle { grid-template-columns:1fr; } }
+  .poster-det { position:relative; border-radius:10px; overflow:hidden; border:1px solid var(--linea); }
+  .poster-det img { width:100%; display:block; }
+  .poster-det .dur.izq { left:.6rem; right:auto; }
+  .clasif-flot { position:absolute; top:.6rem; right:.6rem; z-index:2; }
+  .detalle h1 { font-size:2.1rem; text-transform:uppercase; letter-spacing:1px; margin:0 0 .2rem; line-height:1.1; }
+  .meta-det { color:var(--texto2); text-transform:uppercase; letter-spacing:1.5px; font-size:.82rem; line-height:1.7; }
+  .subtitulo { font-size:1.25rem; text-transform:uppercase; letter-spacing:2px; margin:1.8rem 0 .8rem; }
+  .sinopsis { color:#d6d6dd; line-height:1.65; font-size:.95rem; margin:0 0 1rem; }
+  .tabs-fecha { display:flex; border:1px solid var(--linea); border-radius:8px; overflow:hidden;
+                width:max-content; max-width:100%; }
+  .tab-fecha { background:var(--panel); color:var(--texto2); border:none; border-right:1px solid var(--linea);
+               padding:.7rem 1.4rem; cursor:pointer; font-family:'Oswald',sans-serif; }
+  .tab-fecha:last-child { border-right:none; }
+  .tab-fecha .tf-dia { display:block; font-weight:700; font-size:1rem; letter-spacing:1px; }
+  .tab-fecha .tf-num { font-size:.78rem; letter-spacing:1px; }
+  .tab-fecha.activo { background:#f3f3f1; color:#15151a; }
+  .leyenda { display:flex; flex-wrap:wrap; gap:1.4rem; margin:.4rem 0 1rem; color:var(--texto2); font-size:.88rem; }
+  .punto { display:inline-block; width:15px; height:11px; border-radius:3px 3px 6px 6px; margin-right:.45rem; }
+  .punto.alta, .hora.alta   { border-left-color:#3fc380; }  .punto.alta  { background:#3fc380; }
+  .punto.media, .hora.media { border-left-color:#e8c54a; }  .punto.media { background:#e8c54a; }
+  .punto.baja, .hora.baja   { border-left-color:#e8884a; }  .punto.baja  { background:#e8884a; }
+  .punto.lleno, .hora.lleno { border-left-color:#e84a5f; }  .punto.lleno { background:#e84a5f; }
+  .sede-bloque { margin:1.4rem 0 1.8rem; }
+  .sede-titulo { font-family:'Oswald',sans-serif; font-size:1.15rem; font-weight:600;
+                 text-transform:uppercase; letter-spacing:1.5px; }
+  .sede-nombre { color:var(--rojo); }
+  .sede-dir { color:var(--texto2); font-size:.88rem; margin:.2rem 0 .6rem; }
+  .sala-linea { font-weight:600; font-size:.88rem; letter-spacing:1px; text-transform:uppercase; margin-top:.8rem; }
+  .horas { display:flex; flex-wrap:wrap; gap:.7rem; margin-top:.55rem; }
+  .hora { background:var(--panel2); border:1px solid var(--linea); border-left:5px solid #3fc380;
+          border-radius:8px; color:#fff; padding:.55rem 1.1rem; cursor:pointer;
+          font-family:'Oswald',sans-serif; font-size:.95rem; letter-spacing:1px; }
+  .hora:hover:not([disabled]) { background:#26262e; }
+  .hora[disabled] { opacity:.45; cursor:not-allowed; }
+  .barra-comprar { position:fixed; bottom:0; right:0; width:min(640px,55%); z-index:70; }
+  .barra-comprar a { display:block; background:var(--rojo); color:#fff; text-align:center; padding:1.05rem;
+                     font-family:'Oswald',sans-serif; font-weight:600; font-size:1.05rem;
+                     letter-spacing:3px; text-transform:uppercase; text-decoration:none; }
+  .barra-comprar a:hover { background:var(--rojo-osc); }
+  .panel-fecha { display:none; }
+  .panel-fecha.visible { display:block; }
+
+  /* ============ FACTURA ============ */
+  .factura-caja { max-width:820px; margin:0 auto; background:var(--panel); border:1px solid var(--linea);
+                  border-radius:12px; overflow:hidden; }
+  .factura-cabecera { display:flex; justify-content:space-between; align-items:center; gap:1rem;
+                      flex-wrap:wrap; background:#000; padding:1.2rem 1.6rem; border-bottom:3px solid var(--rojo); }
+  .factura-numero { font-family:'Oswald',sans-serif; font-size:1.15rem; font-weight:600;
+                    letter-spacing:1.5px; text-transform:uppercase; }
+  .factura-cuerpo { display:flex; gap:1.8rem; padding:1.6rem; flex-wrap:wrap; }
+  .factura-poster { width:200px; border-radius:8px; border:1px solid var(--linea); align-self:flex-start; }
+  .factura-detalle { flex:1; min-width:280px; }
+  .factura-tabla { width:100%; }
+  .factura-tabla td { padding:.4rem 0; border:none; }
+  .factura-tabla td:first-child { color:var(--texto2); text-transform:uppercase; font-size:.78rem;
+                                  letter-spacing:1.5px; width:140px; }
+  .factura-totales { margin-top:1.2rem; border-top:1px solid var(--linea); padding-top:.8rem; max-width:320px; }
+  .factura-totales div { display:flex; justify-content:space-between; padding:.25rem 0; color:var(--texto2); }
+  .factura-totales .total { color:#fff; font-family:'Oswald',sans-serif; font-size:1.25rem;
+                            border-top:2px solid var(--rojo); margin-top:.4rem; padding-top:.6rem; }
+
+  /* ============ COMPRA RÁPIDA (flotante) ============ */
+  .compra-rapida { position:fixed; bottom:1.6rem; right:1.6rem; background:#fff; color:#111;
+      text-decoration:none; padding:.8rem 1.5rem; border-radius:8px; font-family:'Oswald',sans-serif;
+      font-weight:600; letter-spacing:2px; text-transform:uppercase; font-size:.9rem;
+      box-shadow:0 4px 18px rgba(0,0,0,.5); z-index:60; }
+  .compra-rapida:hover { background:var(--rojo); color:#fff; }
+</style>
+</head>
+<body>
+<header>
+  <a class="logo" href="{{ url_for('inicio') }}">FEST<span>CINE</span></a>
+  <nav>
+    <a href="{{ url_for('taquilla') }}" class="{{ 'activo' if request.path.startswith(('/taquilla', '/pelicula')) }}">Cartelera</a>
+    <a href="{{ url_for('abonos') }}"   class="{{ 'activo' if request.path.startswith('/abonos') }}">Abonos</a>
+    {% if session.get('rol') == 'cliente' %}
+    <a href="{{ url_for('mis_compras') }}" class="{{ 'activo' if request.path.startswith('/mis-compras') }}">Mis compras</a>
+    {% elif session.get('rol') == 'admin' %}
+    <a href="{{ url_for('agenda') }}"   class="{{ 'activo' if request.path.startswith('/agenda') }}">Agenda</a>
+    <a href="{{ url_for('ventas') }}"   class="{{ 'activo' if request.path.startswith('/ventas') }}">Ventas</a>
+    <a href="{{ url_for('reportes') }}" class="{{ 'activo' if request.path.startswith('/reportes') }}">Reportes</a>
+    {% endif %}
+  </nav>
+  <div class="header-der">
+    {% if session.get('rol') %}
+      <span class="usuario-chip">👤 {{ session.nombre }}</span>
+      <a class="salir" href="{{ url_for('logout') }}">Salir</a>
+    {% else %}
+      <a class="salir" href="{{ url_for('login') }}">Iniciar sesión</a>
+    {% endif %}
+    <span class="ubicacion">📍 FestCine 2026 · Medellín</span>
+  </div>
+</header>
+<main>
+  {% with mensajes = get_flashed_messages(with_categories=true) %}
+    {% for categoria, mensaje in mensajes %}
+      <div class="flash {{ categoria }}">{{ mensaje }}</div>
+    {% endfor %}
+  {% endwith %}
+  {% block contenido %}{% endblock %}
+</main>
+<a class="compra-rapida" href="{{ url_for('taquilla') }}">⚡ Compra rápida</a>
+</body>
+</html>

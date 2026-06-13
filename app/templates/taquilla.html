@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+{% block titulo %}Cartelera{% endblock %}
+{% block contenido %}
+
+<!-- ============ CARRUSEL PRINCIPAL ============ -->
+{% if hero %}
+<div class="hero-wrap">
+  <section class="hero" id="hero">
+    {% for h in hero %}
+    <div class="hero-slide {{ 'visible' if loop.first }}"
+         style="background-image:url('{{ url_for('static', filename='banners/' ~ h.banner) }}')"
+         data-url="{{ url_for('pelicula_detalle', pelicula_id=h.pelicula_id) }}"
+         title="Ver funciones — {{ h.titulo }}">
+      <span class="hero-cta">🎟 Comprar entradas</span>
+    </div>
+    {% endfor %}
+    <button class="hero-flecha izq" id="hero-prev" type="button">‹</button>
+    <button class="hero-flecha der" id="hero-next" type="button">›</button>
+  </section>
+  <div class="hero-dots" id="hero-dots"></div>
+</div>
+{% endif %}
+
+<h1 class="titulo-seccion">Cartelera</h1>
+<p class="nota">Módulo 1 · Taquilla — elige una película para ver su ficha, sus
+   funciones por fecha y comprar entradas. La compra invoca el procedimiento
+   almacenado <strong>sp_comprar_entrada</strong> (P1) en el servidor.</p>
+
+{% set colores = {'TP':'verde', '7+':'azul', '12+':'azul', '16+':'naranja', '18+':'rojo'} %}
+<div class="grid-cartelera">
+  {% for p in peliculas %}
+  <article class="card-peli">
+    <a class="card-enlace" href="{{ url_for('pelicula_detalle', pelicula_id=p.pelicula_id) }}">
+      <div class="poster {{ 'con-img' if p.poster else 'g' ~ (p.pelicula_id % 6 + 1) }}">
+        {% if p.poster %}
+        <img src="{{ url_for('static', filename='posters/' ~ p.poster) }}" alt="Póster de {{ p.titulo }}">
+        {% else %}
+        <div class="poster-centro">
+          <div class="poster-titulo">{{ p.titulo }}</div>
+          <div class="poster-sub">{{ p.pais_origen }} · {{ p.anio_produccion }}</div>
+        </div>
+        <div class="poster-laurel">— Festival Internacional de Cine —</div>
+        {% endif %}
+        <span class="dur">{{ p.duracion_min|duracion }}</span>
+      </div>
+      <div class="card-info">
+        <div class="card-titulo">
+          <h3>{{ p.titulo }}</h3>
+          <span class="clasif {{ colores.get(p.clasificacion, 'azul') }}">{{ p.clasificacion }}</span>
+        </div>
+        <div class="card-formatos">{{ p.formato }} · {{ p.generos }}</div>
+      </div>
+    </a>
+    {% if p.estado == 'Premiada' %}
+      <div class="strip premiada">🏆 Premiada</div>
+    {% else %}
+      <div class="strip estreno">Selección oficial</div>
+    {% endif %}
+    <a class="btn-comprar" href="{{ url_for('pelicula_detalle', pelicula_id=p.pelicula_id) }}">Comprar entradas</a>
+  </article>
+  {% endfor %}
+</div>
+
+<script>
+  /* ---------- Carrusel principal ---------- */
+  const slides = Array.from(document.querySelectorAll('.hero-slide'));
+  if (slides.length > 0) {
+    const dotsBox = document.getElementById('hero-dots');
+    let actual = 0, timer = null;
+
+    slides.forEach((s, i) => {
+      const dot = document.createElement('button');
+      dot.className = 'hero-dot' + (i === 0 ? ' activo' : '');
+      dot.addEventListener('click', () => { mostrar(i); reiniciar(); });
+      dotsBox.appendChild(dot);
+      s.addEventListener('click', () => { window.location.href = s.dataset.url; });
+    });
+
+    function mostrar(i) {
+      actual = (i + slides.length) % slides.length;
+      slides.forEach((s, j) => s.classList.toggle('visible', j === actual));
+      dotsBox.querySelectorAll('.hero-dot').forEach((d, j) => d.classList.toggle('activo', j === actual));
+    }
+    function reiniciar() {
+      clearInterval(timer);
+      timer = setInterval(() => mostrar(actual + 1), 5000);
+    }
+
+    document.getElementById('hero-prev').addEventListener('click', () => { mostrar(actual - 1); reiniciar(); });
+    document.getElementById('hero-next').addEventListener('click', () => { mostrar(actual + 1); reiniciar(); });
+    reiniciar();
+  }
+</script>
+{% endblock %}
