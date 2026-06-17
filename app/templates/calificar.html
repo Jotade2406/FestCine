@@ -1,0 +1,142 @@
+{% extends "base.html" %}
+{% block titulo %}Jurado{% endblock %}
+{% block contenido %}
+
+<style>
+  textarea { width:100%; padding:.55rem .65rem; border:1px solid var(--linea); border-radius:6px;
+             background:#0f0f13; color:var(--texto); font-size:.95rem; font-family:'Inter',sans-serif;
+             resize:vertical; min-height:70px; }
+  textarea:focus { outline:none; border-color:var(--rojo); }
+  .nota-cat { color:var(--texto2); font-size:.82rem; margin:.4rem 0 0; min-height:1em; }
+  .punt { display:inline-block; min-width:2.2rem; text-align:center; font-family:'Oswald',sans-serif;
+          font-weight:600; color:var(--oro); }
+  .vacio { color:var(--texto2); font-style:italic; }
+</style>
+
+<h1 class="titulo-seccion">Panel del jurado</h1>
+<p class="nota">Módulo de competición · Perfil Administrador</p>
+
+<div class="tarjeta">
+  <h2>Registrar calificación</h2>
+  <p class="nota">Al presionar «Registrar», la aplicación invoca
+     <strong>sp_registrar_evaluacion</strong>, que inserta en la tabla
+     <strong>evaluacion</strong>. El procedimiento valida que la película
+     compita en la categoría, que la persona sea jurado de esa categoría, que la
+     puntuación esté entre 1 y 10 y que ese jurado no haya calificado ya esa
+     película; cualquier infracción se muestra como mensaje amigable. La nota
+     promedio resultante se ve luego en <strong>Reportes → Acta de premiación</strong>.</p>
+
+  {% if categorias %}
+  <form method="post" action="{{ url_for('registrar_evaluacion') }}">
+    <div class="fila">
+      <div>
+        <label for="categoria">Categoría</label>
+        <select id="categoria" name="categoria_id" required>
+          {% for c in categorias %}
+          <option value="{{ c.categoria_id }}">{{ c.categoria }} · {{ c.edicion }}</option>
+          {% endfor %}
+        </select>
+        <p class="nota-cat" id="nota-cat"></p>
+      </div>
+      <div>
+        <label for="pelicula">Película en competencia</label>
+        <select id="pelicula" name="pelicula_id" required></select>
+      </div>
+    </div>
+    <div class="fila">
+      <div>
+        <label for="jurado">Jurado</label>
+        <select id="jurado" name="persona_id" required></select>
+      </div>
+      <div>
+        <label for="puntuacion">Puntuación (1–10)</label>
+        <select id="puntuacion" name="puntuacion" required>
+          {% for n in range(1, 11) %}
+          <option value="{{ n }}" {{ 'selected' if n == 8 }}>{{ n }}</option>
+          {% endfor %}
+        </select>
+      </div>
+    </div>
+    <label for="comentario">Comentario (opcional)</label>
+    <textarea id="comentario" name="comentario" maxlength="500"
+              placeholder="Breve justificación del jurado…"></textarea>
+    <button type="submit">Registrar</button>
+  </form>
+  {% else %}
+  <p class="vacio">No hay categorías de competición en la edición vigente.</p>
+  {% endif %}
+</div>
+
+<div class="tarjeta">
+  <h2>Evaluaciones registradas · edición vigente</h2>
+  <p class="nota">Vista <strong>v_evaluaciones</strong>. Cada fila es un voto de un
+     jurado; el promedio por categoría es el que decide el acta de premiación.</p>
+  <table>
+    <tr><th>#</th><th>Categoría</th><th>Película</th><th>Jurado</th><th>Nota</th><th>Comentario</th><th>Fecha</th></tr>
+    {% for ev in evaluaciones %}
+    <tr>
+      <td>{{ ev.evaluacion_id }}</td>
+      <td>{{ ev.categoria }}</td>
+      <td>{{ ev.pelicula }}</td>
+      <td>{{ ev.jurado }}</td>
+      <td><span class="punt">{{ ev.puntuacion }}</span></td>
+      <td>{{ ev.comentario or '—' }}</td>
+      <td>{{ ev.fecha_evaluacion.strftime('%d/%m %H:%M') }}</td>
+    </tr>
+    {% else %}
+    <tr><td colspan="7" class="vacio">Aún no hay evaluaciones registradas.</td></tr>
+    {% endfor %}
+  </table>
+</div>
+
+<script>
+  // Desplegables encadenados: al elegir categoría se reconstruyen las opciones
+  // de película y jurado con solo las que corresponden a esa categoría.
+  const COMPETIDORAS = {{ competidoras|tojson }};
+  const JURADOS = {{ jurados|tojson }};
+  const DESCRIPCIONES = {
+    {% for c in categorias %}"{{ c.categoria_id }}": {{ (c.descripcion or '')|tojson }},{% endfor %}
+  };
+
+  const selCategoria = document.getElementById('categoria');
+  const selPelicula = document.getElementById('pelicula');
+  const selJurado = document.getElementById('jurado');
+  const notaCat = document.getElementById('nota-cat');
+
+  function llenar(select, filas, idKey, textoFn) {
+    select.innerHTML = '';
+    filas.forEach(function (f) {
+      const op = document.createElement('option');
+      op.value = f[idKey];
+      op.textContent = textoFn(f);
+      select.appendChild(op);
+    });
+    if (!filas.length) {
+      const op = document.createElement('option');
+      op.value = '';
+      op.textContent = '(sin opciones para esta categoría)';
+      op.disabled = true;
+      select.appendChild(op);
+    }
+  }
+
+  function actualizar() {
+    const cat = String(selCategoria.value);
+    llenar(selPelicula,
+      COMPETIDORAS.filter(function (c) { return String(c.categoria_id) === cat; }),
+      'pelicula_id',
+      function (c) { return c.titulo + ' · ' + c.pais_origen; });
+    llenar(selJurado,
+      JURADOS.filter(function (j) { return String(j.categoria_id) === cat; }),
+      'persona_id',
+      function (j) { return j.jurado + (j.nacionalidad ? ' · ' + j.nacionalidad : ''); });
+    notaCat.textContent = DESCRIPCIONES[cat] || '';
+  }
+
+  if (selCategoria) {
+    selCategoria.addEventListener('change', actualizar);
+    actualizar();
+  }
+</script>
+
+{% endblock %}

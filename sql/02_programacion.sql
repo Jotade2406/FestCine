@@ -493,6 +493,134 @@ BEGIN
     END CASE;
 END$$
 
+-- ============================================================================
+--  P7. PROCEDIMIENTO: Registrar la calificación de un jurado (Módulo Jurado)
+--  Un miembro del jurado puntúa (1-10) una película dentro de una categoría.
+--  Valida con mensajes amigables que: la categoría exista, la película compita
+--  en ella, la persona sea jurado de esa categoría y no haya calificado ya esa
+--  película (lo que el UNIQUE/las FK compuestas garantizan a nivel de motor).
+-- ============================================================================
+CREATE PROCEDURE sp_registrar_evaluacion(
+    IN  p_categoria_id INT UNSIGNED,
+    IN  p_pelicula_id  INT UNSIGNED,
+    IN  p_persona_id   INT UNSIGNED,
+    IN  p_puntuacion   TINYINT,
+    IN  p_comentario   VARCHAR(500),
+    OUT p_resultado    VARCHAR(255)    -- resultado de la operación (rúbrica)
+)
+BEGIN
+    DECLARE v_categoria VARCHAR(100);
+    DECLARE v_pelicula  VARCHAR(200);
+    DECLARE v_jurado    VARCHAR(161);
+
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+    BEGIN
+        ROLLBACK;
+        RESIGNAL;
+    END;
+
+    -- Validaciones de negocio (mensajes amigables antes de tocar las FK)
+    IF p_puntuacion IS NULL OR p_puntuacion < 1 OR p_puntuacion > 10 THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'La puntuacion debe estar entre 1 y 10';
+    END IF;
+
+    SELECT nombre INTO v_categoria FROM categoria WHERE categoria_id = p_categoria_id;
+    IF v_categoria IS NULL THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'La categoria indicada no existe';
+    END IF;
+
+    IF NOT EXISTS (SELECT 1 FROM pelicula_categoria
+                   WHERE categoria_id = p_categoria_id AND pelicula_id = p_pelicula_id) THEN
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'La pelicula no compite en esa categoria';
+    END IF;
+
+    IF NOT EXISTS (SELECT 1 FROM categoria_jurado
+                   WHERE categoria_id = p_categoria_id AND persona_id = p_persona_id) THEN
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'La persona indicada no es jurado de esa categoria';
+    END IF;
+
+    IF EXISTS (SELECT 1 FROM evaluacion
+               WHERE categoria_id = p_categoria_id
+                 AND pelicula_id  = p_pelicula_id
+                 AND persona_id   = p_persona_id) THEN
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'Ese jurado ya califico esta pelicula en esta categoria';
+    END IF;
+
+    START TRANSACTION;
+
+    INSERT INTO evaluacion (categoria_id, pelicula_id, persona_id, puntuacion, comentario)
+    VALUES (p_categoria_id, p_pelicula_id, p_persona_id, p_puntuacion,
+            NULLIF(TRIM(p_comentario), ''));
+
+    COMMIT;
+
+    SELECT titulo INTO v_pelicula FROM pelicula WHERE pelicula_id = p_pelicula_id;
+    SELECT CONCAT(nombre, ' ', apellidos) INTO v_jurado FROM persona WHERE persona_id = p_persona_id;
+
+    SET p_resultado = CONCAT('OK: ', v_jurado, ' califico "', v_pelicula, '" con ',
+                             p_puntuacion, '/10 en ', v_categoria);
+
+    SELECT LAST_INSERT_ID() AS evaluacion_id;
+END$$
+
+-- ============================================================================
+--  P8. PROCEDIMIENTO: Calificación del público (reseña con estrellas 1-5)
+--  Cualquier asistente puntúa una película desde la app. Si ya la había
+--  reseñado, actualiza su nota (un voto por persona y película: UNIQUE).
+-- ============================================================================
+CREATE PROCEDURE sp_calificar_pelicula(
+    IN  p_asistente_id INT UNSIGNED,
+    IN  p_pelicula_id  INT UNSIGNED,
+    IN  p_estrellas    TINYINT,
+    IN  p_comentario   VARCHAR(500),
+    OUT p_resultado    VARCHAR(255)    -- resultado de la operación (rúbrica)
+)
+BEGIN
+    DECLARE v_titulo VARCHAR(200);
+    DECLARE v_existe TINYINT DEFAULT 0;
+
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+    BEGIN
+        ROLLBACK;
+        RESIGNAL;
+    END;
+
+    IF p_estrellas IS NULL OR p_estrellas < 1 OR p_estrellas > 5 THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'La calificacion debe estar entre 1 y 5 estrellas';
+    END IF;
+
+    IF NOT EXISTS (SELECT 1 FROM asistente WHERE asistente_id = p_asistente_id) THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'El asistente indicado no existe';
+    END IF;
+
+    SELECT titulo INTO v_titulo FROM pelicula WHERE pelicula_id = p_pelicula_id;
+    IF v_titulo IS NULL THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'La pelicula indicada no existe';
+    END IF;
+
+    SET v_existe = EXISTS (SELECT 1 FROM resena
+                           WHERE asistente_id = p_asistente_id AND pelicula_id = p_pelicula_id);
+
+    START TRANSACTION;
+
+    -- Inserta o, si ya existía la reseña de ese asistente, la actualiza
+    INSERT INTO resena (asistente_id, pelicula_id, estrellas, comentario)
+    VALUES (p_asistente_id, p_pelicula_id, p_estrellas, NULLIF(TRIM(p_comentario), '')) AS nueva
+    ON DUPLICATE KEY UPDATE estrellas    = nueva.estrellas,
+                            comentario   = nueva.comentario,
+                            fecha_resena = CURRENT_TIMESTAMP;
+
+    COMMIT;
+
+    SET p_resultado = CONCAT(IF(v_existe, 'Actualizaste tu resena de "', 'Gracias por tu resena de "'),
+                             v_titulo, '": ', p_estrellas, ' de 5 estrellas');
+
+    SELECT p_pelicula_id AS pelicula_id, p_estrellas AS estrellas;
+END$$
+
 DELIMITER ;
 
 -- ============================================================================
@@ -567,6 +695,90 @@ LEFT JOIN acreditacion ac
        ON ac.asistente_id = a.asistente_id
       AND ac.edicion_id = (SELECT edicion_id FROM edicion
                            WHERE anio = (SELECT MAX(anio) FROM edicion));
+
+-- ============================================================================
+--  VISTAS DE COMPETICIÓN / JURADO (módulo "Calificar" del perfil Administrador)
+--  Todas se limitan a la edición vigente (mismo criterio que v_cartelera).
+-- ============================================================================
+
+-- Categorías en competición de la edición vigente
+CREATE VIEW v_categorias AS
+SELECT  c.categoria_id,
+        c.nombre AS categoria,
+        c.descripcion,
+        e.anio   AS edicion
+FROM categoria c
+JOIN edicion e ON e.edicion_id = c.edicion_id
+WHERE e.anio = (SELECT MAX(anio) FROM edicion)
+ORDER BY c.nombre;
+
+-- Películas que compiten en cada categoría (poblar el desplegable de película)
+CREATE VIEW v_competidoras AS
+SELECT  pc.categoria_id,
+        pc.pelicula_id,
+        p.titulo,
+        p.pais_origen
+FROM pelicula_categoria pc
+JOIN pelicula p  ON p.pelicula_id  = pc.pelicula_id
+JOIN categoria c ON c.categoria_id = pc.categoria_id
+JOIN edicion e   ON e.edicion_id   = c.edicion_id
+WHERE e.anio = (SELECT MAX(anio) FROM edicion)
+ORDER BY p.titulo;
+
+-- Jurados asignados a cada categoría (poblar el desplegable de jurado)
+CREATE VIEW v_jurados AS
+SELECT  cj.categoria_id,
+        cj.persona_id,
+        CONCAT(pe.nombre, ' ', pe.apellidos) AS jurado,
+        pe.nacionalidad
+FROM categoria_jurado cj
+JOIN persona pe  ON pe.persona_id  = cj.persona_id
+JOIN categoria c ON c.categoria_id = cj.categoria_id
+JOIN edicion e   ON e.edicion_id   = c.edicion_id
+WHERE e.anio = (SELECT MAX(anio) FROM edicion)
+ORDER BY jurado;
+
+-- Evaluaciones ya registradas (tabla de seguimiento del panel de jurado)
+CREATE VIEW v_evaluaciones AS
+SELECT  ev.evaluacion_id,
+        c.nombre AS categoria,
+        p.titulo AS pelicula,
+        CONCAT(pe.nombre, ' ', pe.apellidos) AS jurado,
+        ev.puntuacion,
+        ev.comentario,
+        ev.fecha_evaluacion
+FROM evaluacion ev
+JOIN categoria c ON c.categoria_id = ev.categoria_id
+JOIN edicion e   ON e.edicion_id   = c.edicion_id
+JOIN pelicula p  ON p.pelicula_id  = ev.pelicula_id
+JOIN persona pe  ON pe.persona_id  = ev.persona_id
+WHERE e.anio = (SELECT MAX(anio) FROM edicion)
+ORDER BY ev.fecha_evaluacion DESC, ev.evaluacion_id DESC;
+
+-- ============================================================================
+--  VISTAS DE OPINIÓN DEL PÚBLICO (reseñas con estrellas en la ficha de película)
+-- ============================================================================
+
+-- Valoración agregada por película: promedio de estrellas y nº de reseñas
+CREATE VIEW v_resenas_pelicula AS
+SELECT  r.pelicula_id,
+        COUNT(*)                   AS num_resenas,
+        ROUND(AVG(r.estrellas), 1) AS promedio
+FROM resena r
+GROUP BY r.pelicula_id;
+
+-- Reseñas individuales (listado bajo la ficha de la película)
+CREATE VIEW v_resenas AS
+SELECT  r.resena_id,
+        r.pelicula_id,
+        r.asistente_id,
+        CONCAT(a.nombre, ' ', a.apellidos) AS asistente,
+        r.estrellas,
+        r.comentario,
+        r.fecha_resena
+FROM resena r
+JOIN asistente a ON a.asistente_id = r.asistente_id
+ORDER BY r.fecha_resena DESC, r.resena_id DESC;
 
 -- ============================================================================
 --  VISTAS DE REPORTE (Fase 3; las consultas documentadas están en

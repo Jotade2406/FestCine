@@ -377,6 +377,23 @@ CREATE TABLE codigo_acceso (
     CONSTRAINT chk_ca_uso CHECK (usado = 1 OR proyeccion_id IS NULL)
 ) ENGINE=InnoDB;
 
+-- Opinión del público: reseña de un asistente sobre una película (1-5 estrellas).
+-- Es independiente de la evaluación del jurado (tabla 'evaluacion', 1-10): esta
+-- la deja cualquier asistente desde la app y alimenta la valoración pública.
+CREATE TABLE resena (
+    resena_id    INT UNSIGNED   NOT NULL AUTO_INCREMENT,
+    asistente_id INT UNSIGNED   NOT NULL,
+    pelicula_id  INT UNSIGNED   NOT NULL,
+    estrellas    TINYINT        NOT NULL,
+    comentario   VARCHAR(500)   NULL,
+    fecha_resena DATETIME       NOT NULL DEFAULT (CURRENT_TIMESTAMP),
+    PRIMARY KEY (resena_id),
+    UNIQUE KEY uq_resena_asistente_pelicula (asistente_id, pelicula_id),  -- una reseña por persona y película
+    CONSTRAINT fk_resena_asistente FOREIGN KEY (asistente_id) REFERENCES asistente (asistente_id),
+    CONSTRAINT fk_resena_pelicula  FOREIGN KEY (pelicula_id)  REFERENCES pelicula (pelicula_id),
+    CONSTRAINT chk_resena_estrellas CHECK (estrellas BETWEEN 1 AND 5)
+) ENGINE=InnoDB;
+
 -- ============================================================================
 --  MÓDULO E: LOGÍSTICA DE INVITADOS Y PATROCINIOS
 -- ============================================================================

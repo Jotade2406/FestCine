@@ -256,6 +256,7 @@
     <a href="{{ url_for('mis_compras') }}" class="{{ 'activo' if request.path.startswith('/mis-compras') }}">Mis compras</a>
     {% elif session.get('rol') == 'admin' %}
     <a href="{{ url_for('agenda') }}"   class="{{ 'activo' if request.path.startswith('/agenda') }}">Agenda</a>
+    <a href="{{ url_for('calificar') }}" class="{{ 'activo' if request.path.startswith('/calificar') }}">Jurado</a>
     <a href="{{ url_for('ventas') }}"   class="{{ 'activo' if request.path.startswith('/ventas') }}">Ventas</a>
     <a href="{{ url_for('reportes') }}" class="{{ 'activo' if request.path.startswith('/reportes') }}">Reportes</a>
     {% endif %}

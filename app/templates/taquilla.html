@@ -1,6 +1,12 @@
 {% extends "base.html" %}
 {% block titulo %}Cartelera{% endblock %}
 {% block contenido %}
+<style>
+  .card-rating { margin-top:.4rem; font-size:.85rem; color:var(--oro); font-weight:600;
+                 letter-spacing:.5px; font-family:'Oswald',sans-serif; }
+  .card-rating span { color:var(--texto2); font-weight:400; }
+  .card-rating.sin { color:var(--texto2); font-weight:400; }
+</style>
 
 <!-- ============ CARRUSEL PRINCIPAL ============ -->
 {% if hero %}
@@ -49,6 +55,12 @@
           <span class="clasif {{ colores.get(p.clasificacion, 'azul') }}">{{ p.clasificacion }}</span>
         </div>
         <div class="card-formatos">{{ p.formato }} · {{ p.generos }}</div>
+        {% set v = valoraciones.get(p.pelicula_id) %}
+        {% if v %}
+        <div class="card-rating">★ {{ v.promedio }} <span>({{ v.num_resenas }})</span></div>
+        {% else %}
+        <div class="card-rating sin">Sin reseñas aún</div>
+        {% endif %}
       </div>
     </a>
     {% if p.estado == 'Premiada' %}

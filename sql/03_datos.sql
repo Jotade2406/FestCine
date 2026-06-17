@@ -259,6 +259,31 @@ INSERT INTO acreditacion (asistente_id, edicion_id, tipo, fecha_emision) VALUES
 (4, 2, 'Jurado',    '2026-06-02');
 
 -- ----------------------------------------------------------------------------
+-- Opinión del público: reseñas con estrellas (1-5) sobre películas de cartelera
+-- ----------------------------------------------------------------------------
+INSERT INTO resena (asistente_id, pelicula_id, estrellas, comentario) VALUES
+( 5,  5, 5, 'Obra maestra, me dejó sin palabras.'),
+( 6,  5, 5, 'La mejor del festival, sin duda.'),
+( 7,  5, 4, 'Intensa y muy bien actuada.'),
+( 8,  5, 5, 'Spielberg en estado puro.'),
+(15,  5, 4, 'Larga, pero valió cada minuto.'),
+( 9,  3, 4, 'Grogu se roba la película.'),
+(10,  3, 5, 'Nostalgia y acción de la buena.'),
+(11,  3, 3, 'Entretenida, aunque predecible.'),
+(12,  3, 4, 'Para fans es imperdible.'),
+(13,  2, 4, 'Terror con clase, la muñeca aterra.'),
+(14,  2, 3, 'Buen ambiente, final flojo.'),
+(16,  2, 4, 'Me hizo saltar varias veces.'),
+(17, 10, 5, 'Lloré como un niño, hermosa.'),
+(18, 10, 4, 'Pixar sigue tocando el corazón.'),
+(19, 10, 4, 'Divertida para toda la familia.'),
+(20,  4, 5, 'Animación desbordante y original.'),
+(21,  4, 4, 'Un viaje visual alucinante.'),
+(22,  6, 3, 'Risas garantizadas, humor absurdo.'),
+( 5,  6, 2, 'Algunos chistes no envejecieron bien.'),
+( 9, 13, 4, 'Biopic emotivo y muy musical.');
+
+-- ----------------------------------------------------------------------------
 -- Tarifas y tipos de abono
 -- ----------------------------------------------------------------------------
 INSERT INTO tarifa (nombre, descuento_pct) VALUES

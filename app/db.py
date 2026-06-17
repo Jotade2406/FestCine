@@ -25,6 +25,12 @@ VISTAS = {
     "v_ventas",
     "v_compras",
     "v_factura_detalle",
+    "v_categorias",
+    "v_competidoras",
+    "v_jurados",
+    "v_evaluaciones",
+    "v_resenas_pelicula",
+    "v_resenas",
 }
 
 

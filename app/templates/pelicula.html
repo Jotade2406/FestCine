@@ -1,7 +1,35 @@
 {% extends "base.html" %}
 {% block titulo %}{{ pelicula.titulo }}{% endblock %}
 {% block contenido %}
-<style>.compra-rapida { display:none; }</style>
+<style>
+  .compra-rapida { display:none; }
+  /* ---- Opinión del público (estrellas) ---- */
+  .rating-resumen { display:flex; align-items:center; gap:.6rem; margin:.2rem 0 1rem; flex-wrap:wrap; }
+  .estrellas { color:var(--oro); letter-spacing:2px; font-size:1.2rem; }
+  .estrellas .vacia { color:#3a3a44; }
+  .rating-num { font-family:'Oswald',sans-serif; font-size:1.4rem; font-weight:600; color:#fff; }
+  .rating-cnt { color:var(--texto2); font-size:.9rem; }
+  .form-resena { background:var(--panel); border:1px solid var(--linea); border-radius:10px;
+                 padding:1rem 1.2rem; margin:0 0 1.4rem; max-width:560px; }
+  .form-resena textarea { width:100%; padding:.55rem .65rem; border:1px solid var(--linea); border-radius:6px;
+                 background:#0f0f13; color:var(--texto); font-size:.95rem; font-family:'Inter',sans-serif;
+                 resize:vertical; min-height:60px; margin-top:.7rem; }
+  .form-resena textarea:focus { outline:none; border-color:var(--rojo); }
+  .form-resena button { margin-top:.8rem; }
+  /* Selector de estrellas: DOM en orden 5→1 + row-reverse para que se vea 1→5 */
+  .stars-input { display:inline-flex; flex-direction:row-reverse; justify-content:flex-end; }
+  .stars-input input { display:none; }
+  .stars-input label { color:#3a3a44; cursor:pointer; font-size:2rem; line-height:1; padding:0 .05rem; transition:color .1s; }
+  .stars-input label:hover, .stars-input label:hover ~ label,
+  .stars-input input:checked ~ label { color:var(--oro); }
+  .lista-resenas { list-style:none; padding:0; margin:0; max-width:680px; }
+  .lista-resenas li { border-top:1px solid var(--linea); padding:.85rem 0; }
+  .resena-cab { display:flex; align-items:center; gap:.7rem; flex-wrap:wrap; }
+  .resena-autor { font-weight:600; color:#fff; }
+  .resena-stars { color:var(--oro); letter-spacing:1px; font-size:.95rem; }
+  .resena-fecha { color:var(--texto2); font-size:.8rem; margin-left:auto; }
+  .resena-texto { margin:.4rem 0 0; color:#d6d6dd; line-height:1.5; font-size:.93rem; }
+</style>
 
 {% set colores = {'TP':'verde', '7+':'azul', '12+':'azul', '16+':'naranja', '18+':'rojo'} %}
 
@@ -31,6 +59,17 @@
   <div id="horarios">
     <h1>{{ pelicula.titulo }}</h1>
     <p class="meta-det">Selección oficial · FestCine {{ pelicula.edicion }}</p>
+
+    {% if resumen %}
+    {% set llenas = (resumen.promedio|float)|round(0, 'common')|int %}
+    <a href="#resenas" style="text-decoration:none;">
+      <div class="rating-resumen">
+        <span class="estrellas">{% for i in range(1, 6) %}<span class="{{ '' if i <= llenas else 'vacia' }}">★</span>{% endfor %}</span>
+        <span class="rating-num">{{ resumen.promedio }}</span>
+        <span class="rating-cnt">· {{ resumen.num_resenas }} reseña{{ 's' if resumen.num_resenas != 1 }} del público</span>
+      </div>
+    </a>
+    {% endif %}
 
     <h2 class="subtitulo">Horarios</h2>
 
@@ -78,6 +117,54 @@
     {% endif %}
   </div>
 </div>
+
+<!-- ============ OPINIÓN DEL PÚBLICO (reseñas con estrellas) ============ -->
+<h2 class="subtitulo" id="resenas">Opinión del público</h2>
+
+{% if resumen %}
+{% set llenas = (resumen.promedio|float)|round(0, 'common')|int %}
+<div class="rating-resumen">
+  <span class="estrellas">{% for i in range(1, 6) %}<span class="{{ '' if i <= llenas else 'vacia' }}">★</span>{% endfor %}</span>
+  <span class="rating-num">{{ resumen.promedio }}</span>
+  <span class="rating-cnt">sobre 5 · {{ resumen.num_resenas }} reseña{{ 's' if resumen.num_resenas != 1 }}</span>
+</div>
+{% else %}
+<p class="nota">Aún no hay reseñas del público para esta película.</p>
+{% endif %}
+
+{% if session.get('rol') == 'cliente' %}
+<form class="form-resena" method="post" action="{{ url_for('calificar_pelicula', pelicula_id=pelicula.pelicula_id) }}">
+  <label style="margin-bottom:.3rem;">{{ 'Tu calificación' if mi_resena else 'Califica esta película' }}</label>
+  <div class="stars-input">
+    {% for i in range(5, 0, -1) %}
+    <input type="radio" name="estrellas" id="star{{ i }}" value="{{ i }}"
+           {{ 'checked' if mi_resena and mi_resena.estrellas == i }} required>
+    <label for="star{{ i }}" title="{{ i }} estrella{{ 's' if i != 1 }}">★</label>
+    {% endfor %}
+  </div>
+  <textarea name="comentario" maxlength="500"
+            placeholder="Cuéntanos qué te pareció (opcional)…">{{ mi_resena.comentario if mi_resena and mi_resena.comentario else '' }}</textarea>
+  <button type="submit">{{ 'Actualizar mi reseña' if mi_resena else 'Publicar reseña' }}</button>
+</form>
+{% elif not session.get('rol') %}
+<p class="nota"><a href="{{ url_for('login', next=request.path) }}" style="color:var(--rojo);">Inicia sesión</a>
+   como cliente para dejar tu reseña.</p>
+{% endif %}
+
+{% if resenas %}
+<ul class="lista-resenas">
+  {% for r in resenas %}
+  <li>
+    <div class="resena-cab">
+      <span class="resena-autor">{{ r.asistente }}</span>
+      <span class="resena-stars">{% for i in range(1, 6) %}{{ '★' if i <= r.estrellas else '☆' }}{% endfor %}</span>
+      <span class="resena-fecha">{{ r.fecha_resena.strftime('%d/%m/%Y') }}</span>
+    </div>
+    {% if r.comentario %}<p class="resena-texto">{{ r.comentario }}</p>{% endif %}
+  </li>
+  {% endfor %}
+</ul>
+{% endif %}
 
 <div class="barra-comprar"><a href="#horarios">Comprar entradas</a></div>
 

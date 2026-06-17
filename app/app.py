@@ -175,7 +175,8 @@ def taquilla():
         for p in peliculas
         if p["poster"] in BANNERS
     ]
-    return render_template("taquilla.html", peliculas=peliculas, hero=hero)
+    valoraciones = {r["pelicula_id"]: r for r in db.leer_vista("v_resenas_pelicula")}
+    return render_template("taquilla.html", peliculas=peliculas, hero=hero, valoraciones=valoraciones)
 
 
 @app.route("/pelicula/<int:pelicula_id>")
@@ -224,6 +225,15 @@ def pelicula_detalle(pelicula_id: int):
     # El administrador actúa como cajero: puede elegir el asistente
     asistentes = db.leer_vista("v_asistentes") if session.get("rol") == "admin" else []
 
+    # Opinión del público: valoración agregada, reseñas y la propia del cliente
+    resumen = next(
+        (r for r in db.leer_vista("v_resenas_pelicula") if r["pelicula_id"] == pelicula_id), None
+    )
+    resenas = [r for r in db.leer_vista("v_resenas") if r["pelicula_id"] == pelicula_id]
+    mi_resena = next(
+        (r for r in resenas if r["asistente_id"] == session.get("asistente_id")), None
+    ) if session.get("rol") == "cliente" else None
+
     return render_template(
         "pelicula.html",
         pelicula=pelicula,
@@ -231,7 +241,28 @@ def pelicula_detalle(pelicula_id: int):
         agenda=agenda,
         tarifas=db.leer_vista("v_tarifas"),
         asistentes=asistentes,
+        resumen=resumen,
+        resenas=resenas,
+        mi_resena=mi_resena,
     )
+
+
+@app.route("/pelicula/<int:pelicula_id>/resena", methods=["POST"])
+@requiere_rol("cliente")
+def calificar_pelicula(pelicula_id: int):
+    """Reseña del público: el cliente puntúa la película (1-5 estrellas).
+    Invoca sp_calificar_pelicula, que inserta o actualiza su voto."""
+    try:
+        resultado = db.llamar_procedimiento("sp_calificar_pelicula", (
+            session["asistente_id"],
+            pelicula_id,
+            request.form["estrellas"],
+            request.form.get("comentario", ""),
+        ), con_salida=True)
+        flash(f"★ {resultado['resultado']}", "exito")
+    except MySQLError as exc:
+        flash(mensaje_amigable(exc), "error")
+    return redirect(url_for("pelicula_detalle", pelicula_id=pelicula_id, _anchor="resenas"))
 
 
 @app.route("/taquilla/comprar", methods=["POST"])
@@ -471,6 +502,43 @@ def programar_proyeccion():
     except MySQLError as exc:
         flash(mensaje_amigable(exc), "error")
     return redirect(url_for("agenda"))
+
+
+# ============================================================================
+#  MÓDULO JURADO (ADMIN): REGISTRO DE CALIFICACIONES
+#  El administrador registra la puntuación (1-10) que un jurado otorga a una
+#  película dentro de una categoría. La operación la realiza el procedimiento
+#  sp_registrar_evaluacion, que valida (categoría, película que compite, jurado
+#  de la categoría, voto no repetido) y propaga los SIGNAL como mensajes
+#  amigables. Las FK compuestas y el UNIQUE de la tabla refuerzan esas reglas.
+# ============================================================================
+@app.route("/calificar")
+@requiere_rol("admin")
+def calificar():
+    return render_template(
+        "calificar.html",
+        categorias=db.leer_vista("v_categorias"),
+        competidoras=db.leer_vista("v_competidoras"),
+        jurados=db.leer_vista("v_jurados"),
+        evaluaciones=db.leer_vista("v_evaluaciones"),
+    )
+
+
+@app.route("/calificar/registrar", methods=["POST"])
+@requiere_rol("admin")
+def registrar_evaluacion():
+    try:
+        resultado = db.llamar_procedimiento("sp_registrar_evaluacion", (
+            request.form["categoria_id"],
+            request.form["pelicula_id"],
+            request.form["persona_id"],
+            request.form["puntuacion"],
+            request.form.get("comentario", ""),
+        ), con_salida=True)
+        flash(f"✔ {resultado['resultado']}", "exito")
+    except MySQLError as exc:
+        flash(mensaje_amigable(exc), "error")
+    return redirect(url_for("calificar"))
 
 
 # ============================================================================
